@@ -44,6 +44,7 @@ export interface Sale{
     id?: number;
     total?: number;
     payment_method?: string;
+    payment_method_label?: string;
     created_at?: Date;
     products?: SaleDetail[];
 }

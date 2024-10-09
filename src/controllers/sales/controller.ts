@@ -1,8 +1,24 @@
 import { Request, Response } from "express";
-import { ProductResponse, Sale, SaleDetail, SaleInput } from "../../types";
-import { getProductsInfo, getSaleDetail, insertSale } from "./functions";
+import { ProductResponse, QueryFilter, Sale, SaleDetail, SaleInput } from "../../types";
+import { getProductsInfo, getSaleDetail, getSalesData, insertSale } from "./functions";
 
+export const getSales = async function (req: Request, res: Response) {
+    try {
+        const { page, limit }: QueryFilter = req.query;
 
+        const sales: Sale[] = await getSalesData(page, limit);
+
+        res.status(200).json({
+            success: true,
+            sales,
+        });
+    } catch (err: any) {
+        res.status(500).json({
+            success: false,
+            message: err.message,
+        });
+    }
+}
 export const getSaleInfo = async function (req: Request, res: Response) {
     try {
         const { id } = req.params;

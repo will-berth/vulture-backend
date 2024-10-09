@@ -1,6 +1,7 @@
 import { SQL, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { ProductResponse, Sale, SaleDetail } from "../../types";
+import { getPaymentMethodLabel } from "../../utils";
 
 export const getProductsInfo = async(products: SaleDetail[]): Promise<ProductResponse[]> => {
     const productIds: SQL[] = products.map(p => sql`${p.product_id}`);
@@ -81,4 +82,31 @@ export const insertSale = async(subTotal:number, paymentMethod: string, saleDeta
             WHERE id IN(${sql.join(queries[2], sql`,`)})
         `);
     });
+}
+
+export const getSalesData = async(page: number = 1, limit: number = 10): Promise<Sale[]> => {
+    const offset: number = (page - 1) * limit;
+    const result: any = await db?.execute(sql`
+        SELECT 
+            id, 
+            total,
+            payment_method,
+            created_at
+        FROM sales
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+        OFFSET ${offset};    
+    `);
+
+    if (!result || !Array.isArray(result)) {
+        return [];
+    }
+
+    return result?.map((row: any) => ({
+        id: row.id,
+        total: row.total,
+        payment_method: row.payment_method,
+        payment_method_label: getPaymentMethodLabel(row.payment_method),
+        created_at: row.created_at
+    })) as Sale[];
 }

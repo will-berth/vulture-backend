@@ -1,8 +1,9 @@
 import express from 'express';
-import { generateSale, getSaleInfo } from '../controllers/sales/controller';
+import { generateSale, getSaleInfo, getSales } from '../controllers/sales/controller';
 
 const router = express.Router();
 
+router.get('/', getSales);
 router.get('/:id', getSaleInfo);
 router.post('/', generateSale);
 
