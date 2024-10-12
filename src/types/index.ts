@@ -22,6 +22,12 @@ export interface QueryFilter {
     page?: number;
     limit?: number;
     name?: string;
+    category_ids?: string;
+    created_at?: string;
+    price_min?: number;
+    price_max?: number;
+    stock_min?: number;
+    stock_max?: number;
 }
 
 export interface SaleDetail {
@@ -47,4 +53,9 @@ export interface Sale{
     payment_method_label?: string;
     created_at?: Date;
     products?: SaleDetail[];
+}
+
+export interface Category{
+    id: number;
+    name: string;
 }
