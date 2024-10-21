@@ -1,12 +1,15 @@
 import { SQL, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { Category, Product, QueryFilter } from "../../types";
+import { customAlphabet } from "nanoid";
+import { parseDate } from "../../utils";
 
 
 export const insertProduct = async(product: Product) => {
+    const requestId = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
     return await db?.execute(sql`
-        INSERT INTO products (category_id, name, description, price, stock)
-        VALUES(${product.category_id}, ${product.name}, ${product.description}, ${product.price}, ${product.stock});
+        INSERT INTO products (request_id, category_id, name, description, price, stock)
+        VALUES(${requestId()}, ${product.category_id}, ${product.name}, ${product.description}, ${product.price}, ${product.stock});
     `);
 }
 
@@ -36,12 +39,7 @@ export const getAllProducts = async(query: QueryFilter): Promise<Product[]> => {
 
     
     if(created_at) {
-        const date = new Date(created_at as string);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-    
-        const formattedDate = `${year}-${month}-${day}`;
+        const formattedDate = parseDate(created_at);
         filters.push(sql`(p.created_at >= ${formattedDate}::timestamp AND p.created_at <= ${formattedDate}::timestamp + interval '1  day')`)
     }
 

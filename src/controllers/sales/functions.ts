@@ -1,7 +1,8 @@
 import { SQL, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { ProductResponse, Sale, SaleDetail } from "../../types";
-import { getPaymentMethodLabel } from "../../utils";
+import { ProductResponse, QueryFilter, Sale, SaleByProduct, SaleDetail } from "../../types";
+import { getPaymentMethodLabel, parseDate } from "../../utils";
+import { customAlphabet } from "nanoid";
 
 export const getProductsInfo = async(products: SaleDetail[]): Promise<ProductResponse[]> => {
     const productIds: SQL[] = products.map(p => sql`${p.product_id}`);
@@ -52,9 +53,10 @@ export const getSaleDetail = async(id: number): Promise<Sale> => {
 
 export const insertSale = async(subTotal:number, paymentMethod: string, saleDetail: SaleDetail[]) => {
     await db?.transaction(async(tx) => {
+        const requestId = customAlphabet('1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ', 10);
         const sale = await tx.execute(sql`
-            INSERT INTO sales(total, payment_method)
-            VALUES(${subTotal}, ${paymentMethod})
+            INSERT INTO sales(request_id, total, payment_method)
+            VALUES(${requestId()}, ${subTotal}, ${paymentMethod})
             RETURNING id;
         `);
 
@@ -84,18 +86,30 @@ export const insertSale = async(subTotal:number, paymentMethod: string, saleDeta
     });
 }
 
-export const getSalesData = async(page: number = 1, limit: number = 10): Promise<Sale[]> => {
-    const offset: number = (page - 1) * limit;
+export const getSalesData = async(query: QueryFilter): Promise<SaleByProduct[]> => {
+    // const offset: number = (page - 1) * limit;
+    const { start_date, end_date } = query;
+    const filters: SQL[] = [];
+
+    if(start_date && end_date ) {
+        const startDate = parseDate(start_date);
+        const endDate = parseDate(end_date);
+        filters.push(sql`(sd.created_at BETWEEN ${startDate}::timestamp AND ${endDate}::timestamp)`);
+    }
     const result: any = await db?.execute(sql`
         SELECT 
-            id, 
-            total,
-            payment_method,
-            created_at
-        FROM sales
-        ORDER BY created_at DESC
-        LIMIT ${limit}
-        OFFSET ${offset};    
+            s.request_id AS sale_id,
+            p.request_id AS product_id,
+            p."name",
+            sd.quantity,
+            sd.price,
+            sd.subtotal,
+            sd.created_at
+        FROM sale_details sd 
+        LEFT JOIN products p ON p.id = sd.product_id 
+        LEFT JOIN sales s ON s.id = sd.sale_id
+        ${filters.length > 0 ? sql`WHERE ${sql.join(filters, sql` AND `)}` : sql``}  
+        ORDER BY sd.created_at DESC
     `);
 
     if (!result || !Array.isArray(result)) {
@@ -103,10 +117,12 @@ export const getSalesData = async(page: number = 1, limit: number = 10): Promise
     }
 
     return result?.map((row: any) => ({
-        id: row.id,
-        total: row.total,
-        payment_method: row.payment_method,
-        payment_method_label: getPaymentMethodLabel(row.payment_method),
+        sale_id: row.sale_id,
+        product_id: row.product_id,
+        quantity: row.quantity,
+        name: row.name,
+        price: row.price,
+        subtotal: row.subtotal,
         created_at: row.created_at
-    })) as Sale[];
+    })) as SaleByProduct[];
 }
